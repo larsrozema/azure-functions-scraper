@@ -1,25 +1,77 @@
 {
-    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
     "contentVersion": "1.0.0.0",
     "parameters": {
-        "storageAccounts_python_nos_scraper_name": {
-            "defaultValue": "pythonnosscraper",
+        "sites_scraper_function_app_lars_2_name": {
+            "defaultValue": "scraper-function-app-lars-2",
+            "type": "String"
+        },
+        "serverfarms_ASP_scraperfunctionapp_afec_name": {
+            "defaultValue": "ASP-scraperfunctionapp-afec",
+            "type": "String"
+        },
+        "storageAccounts_scraperfunctionapplars_name": {
+            "defaultValue": "scraperfunctionapplars",
+            "type": "String"
+        },
+        "components_scraper_function_app_lars_2_name": {
+            "defaultValue": "scraper-function-app-lars-2",
+            "type": "String"
+        },
+        "actionGroups_Application_Insights_Smart_Detection_name": {
+            "defaultValue": "Application Insights Smart Detection",
             "type": "String"
         }
     },
     "variables": {},
     "resources": [
         {
+            "type": "microsoft.insights/actionGroups",
+            "apiVersion": "2019-03-01",
+            "name": "[parameters('actionGroups_Application_Insights_Smart_Detection_name')]",
+            "location": "Global",
+            "properties": {
+                "groupShortName": "SmartDetect",
+                "enabled": true,
+                "emailReceivers": [],
+                "smsReceivers": [],
+                "webhookReceivers": [],
+                "itsmReceivers": [],
+                "azureAppPushReceivers": [],
+                "automationRunbookReceivers": [],
+                "voiceReceivers": [],
+                "logicAppReceivers": [],
+                "azureFunctionReceivers": []
+            }
+        },
+        {
+            "type": "microsoft.insights/components",
+            "apiVersion": "2018-05-01-preview",
+            "name": "[parameters('components_scraper_function_app_lars_2_name')]",
+            "location": "westeurope",
+            "kind": "web",
+            "properties": {
+                "Application_Type": "web",
+                "Flow_Type": "Redfield",
+                "Request_Source": "IbizaWebAppExtensionCreate",
+                "RetentionInDays": 90,
+                "publicNetworkAccessForIngestion": "Enabled",
+                "publicNetworkAccessForQuery": "Enabled"
+            }
+        },
+        {
             "type": "Microsoft.Storage/storageAccounts",
             "apiVersion": "2020-08-01-preview",
-            "name": "[parameters('storageAccounts_python_nos_scraper_name')]",
+            "name": "[parameters('storageAccounts_scraperfunctionapplars_name')]",
             "location": "westeurope",
             "sku": {
                 "name": "Standard_LRS",
                 "tier": "Standard"
             },
-            "kind": "Storage",
+            "kind": "StorageV2",
             "properties": {
+                "minimumTlsVersion": "TLS1_2",
+                "allowBlobPublicAccess": true,
                 "networkAcls": {
                     "bypass": "AzureServices",
                     "virtualNetworkRules": [],
@@ -39,15 +91,40 @@
                         }
                     },
                     "keySource": "Microsoft.Storage"
-                }
+                },
+                "accessTier": "Hot"
+            }
+        },
+        {
+            "type": "Microsoft.Web/serverfarms",
+            "apiVersion": "2018-02-01",
+            "name": "[parameters('serverfarms_ASP_scraperfunctionapp_afec_name')]",
+            "location": "West Europe",
+            "sku": {
+                "name": "Y1",
+                "tier": "Dynamic",
+                "size": "Y1",
+                "family": "Y",
+                "capacity": 0
+            },
+            "kind": "functionapp",
+            "properties": {
+                "perSiteScaling": false,
+                "maximumElasticWorkerCount": 1,
+                "isSpot": false,
+                "reserved": true,
+                "isXenon": false,
+                "hyperV": false,
+                "targetWorkerCount": 0,
+                "targetWorkerSizeId": 0
             }
         },
         {
             "type": "Microsoft.Storage/storageAccounts/blobServices",
             "apiVersion": "2020-08-01-preview",
-            "name": "[concat(parameters('storageAccounts_python_nos_scraper_name'), '/default')]",
+            "name": "[concat(parameters('storageAccounts_scraperfunctionapplars_name'), '/default')]",
             "dependsOn": [
-                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccounts_python_nos_scraper_name'))]"
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccounts_scraperfunctionapplars_name'))]"
             ],
             "sku": {
                 "name": "Standard_LRS",
@@ -63,11 +140,35 @@
             }
         },
         {
+            "type": "Microsoft.Storage/storageAccounts/fileServices",
+            "apiVersion": "2020-08-01-preview",
+            "name": "[concat(parameters('storageAccounts_scraperfunctionapplars_name'), '/default')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccounts_scraperfunctionapplars_name'))]"
+            ],
+            "sku": {
+                "name": "Standard_LRS",
+                "tier": "Standard"
+            },
+            "properties": {
+                "protocolSettings": {
+                    "smb": {}
+                },
+                "cors": {
+                    "corsRules": []
+                },
+                "shareDeleteRetentionPolicy": {
+                    "enabled": true,
+                    "days": 7
+                }
+            }
+        },
+        {
             "type": "Microsoft.Storage/storageAccounts/queueServices",
             "apiVersion": "2020-08-01-preview",
-            "name": "[concat(parameters('storageAccounts_python_nos_scraper_name'), '/default')]",
+            "name": "[concat(parameters('storageAccounts_scraperfunctionapplars_name'), '/default')]",
             "dependsOn": [
-                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccounts_python_nos_scraper_name'))]"
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccounts_scraperfunctionapplars_name'))]"
             ],
             "properties": {
                 "cors": {
@@ -78,9 +179,9 @@
         {
             "type": "Microsoft.Storage/storageAccounts/tableServices",
             "apiVersion": "2020-08-01-preview",
-            "name": "[concat(parameters('storageAccounts_python_nos_scraper_name'), '/default')]",
+            "name": "[concat(parameters('storageAccounts_scraperfunctionapplars_name'), '/default')]",
             "dependsOn": [
-                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccounts_python_nos_scraper_name'))]"
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccounts_scraperfunctionapplars_name'))]"
             ],
             "properties": {
                 "cors": {
@@ -89,12 +190,160 @@
             }
         },
         {
+            "type": "Microsoft.Web/sites",
+            "apiVersion": "2018-11-01",
+            "name": "[parameters('sites_scraper_function_app_lars_2_name')]",
+            "location": "West Europe",
+            "dependsOn": [
+                "[resourceId('Microsoft.Web/serverfarms', parameters('serverfarms_ASP_scraperfunctionapp_afec_name'))]"
+            ],
+            "kind": "functionapp,linux",
+            "properties": {
+                "enabled": true,
+                "hostNameSslStates": [
+                    {
+                        "name": "[concat(parameters('sites_scraper_function_app_lars_2_name'), '.azurewebsites.net')]",
+                        "sslState": "Disabled",
+                        "hostType": "Standard"
+                    },
+                    {
+                        "name": "[concat(parameters('sites_scraper_function_app_lars_2_name'), '.scm.azurewebsites.net')]",
+                        "sslState": "Disabled",
+                        "hostType": "Repository"
+                    }
+                ],
+                "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', parameters('serverfarms_ASP_scraperfunctionapp_afec_name'))]",
+                "reserved": true,
+                "isXenon": false,
+                "hyperV": false,
+                "siteConfig": {},
+                "scmSiteAlsoStopped": false,
+                "clientAffinityEnabled": false,
+                "clientCertEnabled": false,
+                "hostNamesDisabled": false,
+                "containerSize": 1536,
+                "dailyMemoryTimeQuota": 0,
+                "httpsOnly": false,
+                "redundancyMode": "None"
+            }
+        },
+        {
+            "type": "Microsoft.Web/sites/config",
+            "apiVersion": "2018-11-01",
+            "name": "[concat(parameters('sites_scraper_function_app_lars_2_name'), '/web')]",
+            "location": "West Europe",
+            "dependsOn": [
+                "[resourceId('Microsoft.Web/sites', parameters('sites_scraper_function_app_lars_2_name'))]"
+            ],
+            "properties": {
+                "numberOfWorkers": 1,
+                "defaultDocuments": [
+                    "Default.htm",
+                    "Default.html",
+                    "Default.asp",
+                    "index.htm",
+                    "index.html",
+                    "iisstart.htm",
+                    "default.aspx",
+                    "index.php"
+                ],
+                "netFrameworkVersion": "v4.0",
+                "linuxFxVersion": "PYTHON|3.7",
+                "requestTracingEnabled": false,
+                "remoteDebuggingEnabled": false,
+                "remoteDebuggingVersion": "VS2019",
+                "httpLoggingEnabled": false,
+                "logsDirectorySizeLimit": 35,
+                "detailedErrorLoggingEnabled": false,
+                "publishingUsername": "$scraper-function-app-lars-2",
+                "azureStorageAccounts": {},
+                "scmType": "None",
+                "use32BitWorkerProcess": false,
+                "webSocketsEnabled": false,
+                "alwaysOn": false,
+                "managedPipelineMode": "Integrated",
+                "virtualApplications": [
+                    {
+                        "virtualPath": "/",
+                        "physicalPath": "site\\wwwroot",
+                        "preloadEnabled": false
+                    }
+                ],
+                "loadBalancing": "LeastRequests",
+                "experiments": {
+                    "rampUpRules": []
+                },
+                "autoHealEnabled": false,
+                "cors": {
+                    "allowedOrigins": [
+                        "https://functions.azure.com",
+                        "https://functions-staging.azure.com",
+                        "https://functions-next.azure.com"
+                    ],
+                    "supportCredentials": false
+                },
+                "localMySqlEnabled": false,
+                "ipSecurityRestrictions": [
+                    {
+                        "ipAddress": "Any",
+                        "action": "Allow",
+                        "priority": 1,
+                        "name": "Allow all",
+                        "description": "Allow all access"
+                    }
+                ],
+                "scmIpSecurityRestrictions": [
+                    {
+                        "ipAddress": "Any",
+                        "action": "Allow",
+                        "priority": 1,
+                        "name": "Allow all",
+                        "description": "Allow all access"
+                    }
+                ],
+                "scmIpSecurityRestrictionsUseMain": false,
+                "http20Enabled": false,
+                "minTlsVersion": "1.2",
+                "ftpsState": "AllAllowed",
+                "reservedInstanceCount": 0
+            }
+        },
+        {
+            "type": "Microsoft.Web/sites/functions",
+            "apiVersion": "2018-11-01",
+            "name": "[concat(parameters('sites_scraper_function_app_lars_2_name'), '/TimerTriggerForScraper')]",
+            "location": "West Europe",
+            "dependsOn": [
+                "[resourceId('Microsoft.Web/sites', parameters('sites_scraper_function_app_lars_2_name'))]"
+            ],
+            "properties": {
+                "script_root_path_href": "https://scraper-function-app-lars-2.azurewebsites.net/admin/vfs/home/site/wwwroot/TimerTriggerForScraper/",
+                "script_href": "https://scraper-function-app-lars-2.azurewebsites.net/admin/vfs/home/site/wwwroot/TimerTriggerForScraper/__init__.py",
+                "config_href": "https://scraper-function-app-lars-2.azurewebsites.net/admin/vfs/home/site/wwwroot/TimerTriggerForScraper/function.json",
+                "href": "https://scraper-function-app-lars-2.azurewebsites.net/admin/functions/TimerTriggerForScraper",
+                "config": {}
+            }
+        },
+        {
+            "type": "Microsoft.Web/sites/hostNameBindings",
+            "apiVersion": "2018-11-01",
+            "name": "[concat(parameters('sites_scraper_function_app_lars_2_name'), '/', parameters('sites_scraper_function_app_lars_2_name'), '.azurewebsites.net')]",
+            "location": "West Europe",
+            "dependsOn": [
+                "[resourceId('Microsoft.Web/sites', parameters('sites_scraper_function_app_lars_2_name'))]"
+            ],
+            "properties": {
+                "siteName": "scraper-function-app-lars-2",
+                "hostNameType": "Verified"
+            }
+        },
+        {
             "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
             "apiVersion": "2020-08-01-preview",
-            "name": "[concat(parameters('storageAccounts_python_nos_scraper_name'), '/default/azure-webjobs-hosts')]",
+            "name": "[concat(parameters('storageAccounts_scraperfunctionapplars_name'), '/default/azure-webjobs-hosts')]",
             "dependsOn": [
-                "[resourceId('Microsoft.Storage/storageAccounts/blobServices', parameters('storageAccounts_python_nos_scraper_name'), 'default')]",
-                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccounts_python_nos_scraper_name'))]"
+                "[resourceId('Microsoft.Storage/storageAccounts/blobServices', parameters('storageAccounts_scraperfunctionapplars_name'), 'default')]",
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccounts_scraperfunctionapplars_name'))]"
             ],
             "properties": {
                 "defaultEncryptionScope": "$account-encryption-key",
@@ -105,10 +354,10 @@
         {
             "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
             "apiVersion": "2020-08-01-preview",
-            "name": "[concat(parameters('storageAccounts_python_nos_scraper_name'), '/default/azure-webjobs-secrets')]",
+            "name": "[concat(parameters('storageAccounts_scraperfunctionapplars_name'), '/default/azure-webjobs-secrets')]",
             "dependsOn": [
-                "[resourceId('Microsoft.Storage/storageAccounts/blobServices', parameters('storageAccounts_python_nos_scraper_name'), 'default')]",
-                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccounts_python_nos_scraper_name'))]"
+                "[resourceId('Microsoft.Storage/storageAccounts/blobServices', parameters('storageAccounts_scraperfunctionapplars_name'), 'default')]",
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccounts_scraperfunctionapplars_name'))]"
             ],
             "properties": {
                 "defaultEncryptionScope": "$account-encryption-key",
@@ -119,10 +368,10 @@
         {
             "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
             "apiVersion": "2020-08-01-preview",
-            "name": "[concat(parameters('storageAccounts_python_nos_scraper_name'), '/default/scm-releases')]",
+            "name": "[concat(parameters('storageAccounts_scraperfunctionapplars_name'), '/default/scm-releases')]",
             "dependsOn": [
-                "[resourceId('Microsoft.Storage/storageAccounts/blobServices', parameters('storageAccounts_python_nos_scraper_name'), 'default')]",
-                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccounts_python_nos_scraper_name'))]"
+                "[resourceId('Microsoft.Storage/storageAccounts/blobServices', parameters('storageAccounts_scraperfunctionapplars_name'), 'default')]",
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccounts_scraperfunctionapplars_name'))]"
             ],
             "properties": {
                 "defaultEncryptionScope": "$account-encryption-key",
@@ -133,10 +382,10 @@
         {
             "type": "Microsoft.Storage/storageAccounts/tableServices/tables",
             "apiVersion": "2020-08-01-preview",
-            "name": "[concat(parameters('storageAccounts_python_nos_scraper_name'), '/default/scraperdata')]",
+            "name": "[concat(parameters('storageAccounts_scraperfunctionapplars_name'), '/default/scraperdata')]",
             "dependsOn": [
-                "[resourceId('Microsoft.Storage/storageAccounts/tableServices', parameters('storageAccounts_python_nos_scraper_name'), 'default')]",
-                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccounts_python_nos_scraper_name'))]"
+                "[resourceId('Microsoft.Storage/storageAccounts/tableServices', parameters('storageAccounts_scraperfunctionapplars_name'), 'default')]",
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccounts_scraperfunctionapplars_name'))]"
             ]
         }
     ]
